@@ -1,14 +1,17 @@
-from flask import Flask,render_template,request,url_for,redirect
+from flask import Flask,render_template,request,url_for,redirect,session,jsonify
+from nlp import NLP
 import sqlite3 as sq
-import sqlite3 as s
-con = s.connect('sarthak_ka_database.db')
+
+
+
+
+con = sq.connect('sarthak_ka_database.db')
 with con:
     cur=con.cursor()
     cur.execute("Create table if not exists details(fname text not null,lname text,email text primary key not null,password text not null,weight int not null,height int not null,profession text,gender text)")
 
 
-username=None
-
+k=NLP()
 app=Flask(__name__)
 @app.route("/")
 def index():
@@ -24,15 +27,16 @@ def login():
 		with con:
 			cur=con.cursor()
 			try:
+				print('checking')
 				cur.execute("""SELECT fname,password  from details where email = ? """,(username,))
 				d=cur.fetchone()
-				#print(d)
+				print(d)
 				fn = d[0]
 				pas = d[1]
 				if password == pas :
-					username = fn
-					print(username)
-					return redirect(url_for('chatbot'))
+					
+					#print(username)
+					return redirect(url_for('chatbot',username=fn.lower()))
 				else:
 					error = "Invaild Email or Password"
 
@@ -68,12 +72,18 @@ def signup():
 		print(fname,lname,bday,email,ps,weight,height,prof,gen)
 	return render_template('Signup.html')
 
-@app.route("/chatbot")
-def chatbot():
-	usr = username
-	print(username)
-	return render_template('chat.html',username = usr)
-	print(usr)
+@app.route("/xyz/<username>")
+def chatbot(username):
+	return render_template('chat.html',username = username)
+
+
+@app.route('/ask', methods = ["POST"])
+def ask():
+	message = request.form['messageText']
+	res = k.processing(message)
+	print(message)
+	return jsonify({'status':'OK','answer':res})
+
 
 if __name__=="__main__":
 	app.run(port=5000,debug=True)
